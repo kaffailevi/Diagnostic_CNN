@@ -1,0 +1,61 @@
+
+# Python bytecode fájlok
+*.pyc
+*.pyo
+__pycache__/
+
+# Virtuális környezetek
+venv/
+env/
+.venv/
+.env/
+
+# IDE specifikus fájlok
+.vscode/
+.idea/
+
+# Jupyter notebook checkpoint fájlok
+.ipynb_checkpoints/
+
+# PyCharm specifikus fájlok
+*.iml
+.idea/
+
+# Linux rendszer fájlok
+.DS_Store
+
+# Log fájlok
+*.log
+
+# Python csomagok
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+
+# Test fájlok
+.coverage
+nosetests.xml
+pytest-debug.log
+*.tox
+*.nox
+
+# Anaconda specifikus fájlok
+*.conda
+*.hdf5
+
+# Kimeneti fájlok
+*.out
+*.err
+
+# TensorFlow / PyTorch modellek
+model.pth
+*.ckpt
+
+COVID-19_Radiography_Dataset/COVID/
+COVID-19_Radiography_Dataset/Normal/
+COVID-19_Radiography_Dataset/Viral Pneumonia/
+COVID-19_Radiography_Dataset/Lung_Opacity/
+
+
