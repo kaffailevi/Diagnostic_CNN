@@ -121,3 +121,5 @@ cython_debug/
 ./.vscode
 
 *.png
+
+.py-env
