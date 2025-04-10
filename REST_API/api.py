@@ -1,52 +1,53 @@
 import torch
 from torchvision import transforms
 from PIL import Image, ImageOps
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Query, HTTPException
+from pydantic import BaseModel
 from fastapi.responses import FileResponse
 import numpy as np
 import os
 from torchvision.models import googlenet
 import torch.nn as nn
+from fastapi.staticfiles import StaticFiles
+from typing import List, Optional
+import logging
 
 
+from models import resnet50_model, inception_resnet_model, googlenet_model
 
-# Load the trained U-Net model
-unet_model = torch.load("unet_model_full.pth", weights_only=False, map_location=torch.device('cpu'))
+models = {
+    'google_net': googlenet_model,
+    'resnet50': resnet50_model,
+    'inc_resnet_v2': inception_resnet_model
+}
+
+for model_name, model in models.items():
+    # Set the model to evaluation mode
+    model.eval()
+    # Load the model weights
+    state_dict = torch.load(f"classification_models/{model_name}.pth", map_location=torch.device('cpu'))
+    # Load the state dict into the model
+    model.load_state_dict(state_dict)
+
+unet_model = torch.load("segmentation/unet_model_full.pth", weights_only=False, map_location=torch.device('cpu'))
 unet_model.eval()
-
-#Load trained CNN GoogLeNet model
-googlenet_model = googlenet(weights='IMAGENET1K_V1')
-num_classes = 4
-googlenet_model.fc = nn.Sequential(
-    nn.Linear(googlenet_model.fc.in_features, 512),  # Első rejtett réteg
-    nn.LeakyReLU(0.01),
-    nn.Dropout(0.3),
-    nn.Linear(512, 256),  # Második rejtett réteg
-    nn.LeakyReLU(0.01),
-    nn.Dropout(0.3),
-    nn.Linear(256, num_classes)  # Kimeneti réteg
-)
-state_dict = torch.load("googlenet_model_weights.pth", map_location=torch.device('cpu'))
-googlenet_model.load_state_dict(state_dict)
-
-googlenet_model.eval()
 
 
 # Define preprocessing function
 def preprocess_image(image_path):
     """
     Preprocesses an image for input into a machine learning model.
-
-    This function reads an image from the specified file path, converts it to grayscale,
-    resizes it to 256x256 pixels, and transforms it into a PyTorch tensor with an added
-    batch dimension.
-
+    This function opens an image from the specified file path, converts it to 
+    grayscale, resizes it to 256x256 pixels, and transforms it into a tensor 
+    with an added batch dimension.
     Args:
         image_path (str): The file path to the image to be preprocessed.
-
     Returns:
-        torch.Tensor: A 4D tensor representing the preprocessed image, with shape (1, 1, 256, 256).
+        torch.Tensor: A tensor representation of the preprocessed image with 
+        shape (1, 1, 256, 256), where the dimensions represent batch size, 
+        channels, height, and width respectively.
     """
+
     image = Image.open(image_path).convert("L")  # Convert to grayscale if needed
     transform = transforms.Compose([
         transforms.Resize((256, 256)),  # Adjust to your model's input size
@@ -58,20 +59,16 @@ def preprocess_image(image_path):
 def postprocess_output(output_tensor, original_size):
     """
     Post-processes the output tensor from a model to generate a segmented image.
-
-    This function applies binary thresholding to the output tensor, converts it 
-    into a binary mask, and resizes it to match the original image size.
-
     Args:
-        output_tensor (torch.Tensor): The output tensor from the model, expected 
-            to have a single channel with values in the range [0, 1].
-        original_size (tuple): A tuple (width, height) representing the size of 
-            the original image to which the segmented image will be resized.
-
+        output_tensor (torch.Tensor): The output tensor from the model, 
+            typically containing predicted values for each pixel.
+        original_size (tuple): A tuple (width, height) representing the 
+            original size of the input image to which the output should be resized.
     Returns:
         PIL.Image.Image: A binary segmented image resized to the original size, 
-        where pixel values are either 0 or 255.
+            where pixel values are either 0 or 255.
     """
+
     output_image = output_tensor.squeeze().detach().numpy()
     binary_mask = (output_image > 0.5).astype("uint8") * 255  # Binary thresholding (0 or 255)
     segmented_image = Image.fromarray(binary_mask).resize(original_size)  # Resize back to original size
@@ -80,27 +77,29 @@ def postprocess_output(output_tensor, original_size):
 
 app = FastAPI()
 
+
+
 @app.post("/segment/")
 async def segment_image(file: UploadFile = File(...)):
     """
-    Asynchronously processes an uploaded image file, segments it using a pre-trained model, 
-    and returns the segmented image as a response.
+    Segments an uploaded image using a pre-trained U-Net model.
     Args:
         file (UploadFile): The uploaded image file to be segmented.
     Returns:
-        FileResponse: A response containing the segmented image file in PNG format.
-        dict: An error message in case of an exception.
+        FileResponse: The segmented image file in PNG format, returned as a response.
+        dict: An error message if an exception occurs during processing.
     Workflow:
         1. Reads the uploaded image file and saves it temporarily.
         2. Opens the image to retrieve its original size.
-        3. Preprocesses the image for model inference.
-        4. Performs segmentation using a pre-trained model.
-        5. Postprocesses the output to resize it back to the original dimensions.
+        3. Preprocesses the image for input into the U-Net model.
+        4. Performs inference using the U-Net model to generate a segmented output.
+        5. Postprocesses the output to resize it back to the original image size.
         6. Saves the segmented image to a file.
         7. Returns the segmented image as a downloadable response.
     Raises:
-        Exception: If any error occurs during the processing of the image.
+        Exception: If any error occurs during the image processing or segmentation workflow.
     """
+
     try:
         # Read uploaded file
         image_data = await file.read()
@@ -133,16 +132,27 @@ async def segment_image(file: UploadFile = File(...)):
 
 def create_masked_image(original_image_path, segmentation_mask, mode="overlay"):
     """
-    Creates a masked image by combining the original image and its segmentation mask.
-
+    Creates a masked image by either overlaying a segmentation mask on the original image
+    or extracting the masked region from the original image.
     Args:
-        original_image_path (str): Path to the original input image.
-        segmentation_mask (PIL.Image.Image): The segmentation mask as a binary image.
-        mode (str): The masking mode - "overlay" or "extract".
-
+        original_image_path (str): The file path to the original image.
+        segmentation_mask (PIL.Image.Image): The segmentation mask as a PIL Image object.
+        mode (str, optional): The mode of masking. Can be "overlay" (default) or "extract".
+            - "overlay": Overlays the segmentation mask on the original image with a red tint.
+            - "extract": Extracts only the masked region from the original image, setting the background to black.
     Returns:
-        PIL.Image.Image: The masked image based on the specified mode.
+        PIL.Image.Image: The resulting masked image as a PIL Image object.
+    Raises:
+        ValueError: If the provided mode is not "overlay" or "extract".
+    Notes:
+        - The segmentation mask should be a grayscale image where the mask region is white (255) 
+          and the background is black (0).
+        - In "overlay" mode, the mask is resized to match the dimensions of the original image 
+          and applied with a red tint and transparency.
+        - In "extract" mode, the mask is normalized to a 0-1 range and applied to the original 
+          image to isolate the masked region.
     """
+
     # Open original image
     original_image = Image.open(original_image_path).convert("RGB")
     
@@ -188,18 +198,27 @@ def create_masked_image(original_image_path, segmentation_mask, mode="overlay"):
 @app.post("/masked_segment/")
 async def masked_segment(file: UploadFile = File(...), mode: str = "extract"):
     """
-    Processes an uploaded image file and returns a masked version 
-    of the input with segmentation results.
-    
+    Processes an uploaded image file, performs segmentation using a pre-trained model, 
+    and returns a masked image based on the specified mode.
     Args:
-        file (UploadFile): The uploaded input file.
-        mode (str): The masking mode - "overlay", "extract", or "multiply".
-                   Default is "extract".
-
+        file (UploadFile): The uploaded image file to be processed.
+        mode (str, optional): The mode for creating the masked image. Defaults to "extract".
     Returns:
-        FileResponse: A response containing a masked version of 
-                     input in PNG format.
+        FileResponse: A response containing the masked image file in PNG format.
+        dict: An error message if an exception occurs.
+    Raises:
+        Exception: If any error occurs during the processing of the image.
+    Workflow:
+        1. Reads the uploaded image file and saves it temporarily.
+        2. Opens the image to retrieve its original size.
+        3. Preprocesses the image for input into the segmentation model.
+        4. Performs inference using a pre-trained UNet model.
+        5. Postprocesses the model's output to resize it back to the original image size.
+        6. Creates a masked image based on the segmentation output and the specified mode.
+        7. Saves the masked image to a file and returns it as a response.
+        8. Handles any exceptions that occur during the process and returns an error message.
     """
+    
     try:
         # Read uploaded file
         image_data = await file.read()
@@ -244,15 +263,28 @@ async def masked_segment(file: UploadFile = File(...), mode: str = "extract"):
 @app.post("/predict/")
 async def predict_image(file: UploadFile = File(...)):
     """
-    Processes an uploaded image file, segments it, creates a masked version,
-    and returns the GoogleNet model's prediction.
-    
+    Handles the prediction of an uploaded medical image by performing segmentation 
+    and classification to determine the likelihood of specific conditions.
     Args:
-        file (UploadFile): The uploaded chest X-ray image file.
-        
+        file (UploadFile): The uploaded image file to be processed.
     Returns:
-        dict: A JSON response containing the prediction class and confidence scores.
+        dict: A dictionary containing the prediction results or an error message.
+            - "prediction" (str): The predicted class label (e.g., "COVID", "Normal").
+            - "confidence_scores" (dict): A dictionary mapping class labels to their 
+              respective confidence scores.
+            - "error" (str, optional): An error message if an exception occurs.
+    Workflow:
+        1. Reads the uploaded image file and saves it temporarily.
+        2. Preprocesses the image for segmentation using a UNet model.
+        3. Resizes the segmented output back to the original image size.
+        4. Creates a masked image based on the segmentation result.
+        5. Preprocesses the masked image for classification using a GoogLeNet model.
+        6. Performs classification to predict the likelihood of specific conditions.
+        7. Returns the predicted class and confidence scores as a JSON response.
+    Raises:
+        Exception: If any error occurs during the processing of the image.
     """
+    
     try:
         # Read uploaded file
         image_data = await file.read()
@@ -307,3 +339,73 @@ async def predict_image(file: UploadFile = File(...)):
         
     except Exception as e:
         return {"error": str(e)}
+
+
+# A képek tárolási helye
+BASE_DIR = "test_data"  # A fő mappa, ahol a kategóriák találhatóak (pl. COVID, Lung_Opacity, stb.)
+app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
+
+# Modell a kép adatairól
+class ImageResponse(BaseModel):
+    filename: str
+    url: str
+
+logging.basicConfig(level=logging.DEBUG)
+
+def get_images_from_directory(directory: str, category: Optional[str] = None,type="images"):
+    images = []
+
+    # Bejárjuk a fő kategóriát (pl. COVID)
+    for root, dirs, files in os.walk(directory):
+        # Ha meg van adva kategória, akkor csak az adott kategóriában nézünk körül
+        if category:
+            logging.info(f"Checking directory: {root} for category: {category}")
+            # Ellenőrizzük, hogy a kategória mappa benne van a mappa nevében
+            if category.lower() in os.path.basename(root).lower():
+                # Csak az "images" almappát nézzük meg az adott kategórián belül
+                for dir_name in dirs:
+                    if dir_name.lower() == type.lower():
+                        images_path = os.path.join(root, dir_name)
+                        for file in os.listdir(images_path):
+                            if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+                                images.append(os.path.relpath(os.path.join(images_path, file), start=directory))
+        else:
+            # Ha nincs kategória megadva, akkor minden mappában keresünk az "images" almappában
+            if os.path.basename(root).lower() == "images":
+                for file in files:
+                    if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
+                        images.append(os.path.relpath(os.path.join(root, file), start=directory))
+
+    return images
+
+# Get images endpoint with pagination and category filter
+@app.get("/images/", response_model=List[ImageResponse])
+async def get_images(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10,gt=0),
+    category: Optional[str] = Query(None),
+    type: Optional[str] = Query("images" , description="The type of images to retrieve (default is 'images').")
+):
+    """
+    Visszaadja a képeket a tárolóból paginált módon.
+    Ha kategória van megadva, akkor azt is figyelembe veszi a szűrés során.
+    `skip` az első képek száma, amiket átugrunk, `limit` pedig a visszaadott képek számát adja meg.
+    """
+    # A képek listázása az összes almappából vagy csak egy adott kategóriából
+    all_images = get_images_from_directory(BASE_DIR, category,type=type)
+
+    # Paginálás alkalmazása
+    paginated_images = all_images[skip:skip + limit]
+
+    if not paginated_images:
+        raise HTTPException(status_code=404, detail="No images found.")
+
+    # Kép URL-ek visszaadása
+    image_urls = [
+        ImageResponse(
+            filename=image,
+            url=f"/static/{image}"  # A képek elérési útvonala
+        ) for image in paginated_images
+    ]
+
+    return image_urls
