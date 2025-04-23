@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base # assumes your SQLAlchemy models are in models.py
+import os
 
 # Replace with your actual PostgreSQL connection string
-DATABASE_URL = "postgresql://myuser:mypassword@localhost:5432/mydatabase"
-
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://myuser:mypassword@localhost:5432/mydatabase")
 # Create the engine
 engine = create_engine(DATABASE_URL)
 

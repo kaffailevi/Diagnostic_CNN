@@ -80,6 +80,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+def get_or_create_user_db(db: Session, email: str):
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user is None:
+        user = models.User(email=email) 
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
 @app.get("/models/", response_model=List[str])
 async def get_models():
     """
@@ -124,8 +134,20 @@ async def login(request: Request):
     redirect_uri = os.getenv("REDIRECT_URL")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
+
+
+# Dependency
+def get_db():
+    db = database.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @app.get("/auth")
-async def auth(request: Request):
+async def auth(request: Request,
+               db: Session = Depends(get_db),):
     try:
         # Debug: inspect cookies present at callback
         print("[/auth] cookies on callback:", request.cookies)
@@ -144,6 +166,8 @@ async def auth(request: Request):
         # Fallback to userinfo
         if not user:
             user = await oauth.google.userinfo(token=token)
+        get_or_create_user_db(db, user["email"])  
+
 
         if not user:
             raise HTTPException(
@@ -190,14 +214,6 @@ async def auth(request: Request):
 from sqlalchemy.orm import Session
 import models
 
-def get_or_create_user_db(db: Session, email: str):
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
-        user = models.User(email=email)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    return user
 
 # Dependency for verifying our JWT
 def get_current_user(token: str = Cookie(None)):
@@ -288,17 +304,6 @@ def postprocess_output(output_tensor, original_size):
     segmented_image = Image.fromarray(binary_mask).resize(original_size)  # Resize back to original size
     return segmented_image
 
-
-
-
-
-# Dependency
-def get_db():
-    db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 
@@ -799,11 +804,13 @@ async def predict_database_image(
     Only allows prediction on images owned by the authenticated user.
     """
     
+    temp_path = None  # Initialize temp_path to avoid undefined variable issues
     try:
+        user = db.query(models.User).filter(models.User.email == current_user["user_email"]).first()
         # Get image from database with ownership check
         image = db.query(models.Image).filter(
             models.Image.id == image_id,
-            models.Image.user_id == current_user["user_id"]
+            models.Image.user_id == user.id
         ).first()
 
         if not image:
@@ -817,6 +824,7 @@ async def predict_database_image(
         # Reuse existing prediction pipeline
         original_image = Image.open(temp_path)
         original_size = original_image.size
+        original_image.close()  # Close the image after getting its size
         
         # Segmentation
         input_tensor = preprocess_image(temp_path)
@@ -824,7 +832,6 @@ async def predict_database_image(
             output_tensor = unet_model(input_tensor)
         segmented_image = postprocess_output(output_tensor, original_size)
         masked_image = create_masked_image(temp_path, segmented_image, mode="extract")
-
         # Classification
         classify_transform = transforms.Compose([
             transforms.Resize((256, 256)),
@@ -843,6 +850,12 @@ async def predict_database_image(
         class_probs = {classes[i]: float(probabilities[i]) for i in range(len(classes))}
         predicted_class = classes[torch.argmax(probabilities).item()]
 
+        # Make sure all image handles are closed
+        if 'masked_image' in locals() and masked_image is not None:
+            masked_image.close()
+        if 'segmented_image' in locals() and segmented_image is not None:
+            segmented_image.close()
+
         # Cleanup temporary file
         os.remove(temp_path)
 
@@ -851,8 +864,40 @@ async def predict_database_image(
             "confidence_scores": class_probs,
             "image_id": image_id
         }
-
     except Exception as e:
-        if os.path.exists(temp_path):
+        if temp_path and os.path.exists(temp_path):  # Check if temp_path is defined and exists
             os.remove(temp_path)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.delete("/myimages/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_image(
+    image_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Deletes an image by ID if it belongs to the authenticated user.
+    Returns 204 No Content on success, 404 if not found or unauthorized.
+    """
+    # Get the user from the database
+    user = db.query(models.User).filter(models.User.email == current_user["user_email"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Find the image belonging to the user
+    image = db.query(models.Image).filter(
+        models.Image.id == image_id,
+        models.Image.user_id == user.id
+    ).first()
+
+    if not image:
+        raise HTTPException(
+            status_code=404,
+            detail="Image not found or you don't have permission to delete it"
+        )
+
+    db.delete(image)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

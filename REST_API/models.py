@@ -13,7 +13,7 @@ class Image(Base):
     __tablename__ = 'images'
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String, nullable=False)
-    data = Column(LargeBinary, nullable=False) # ⬅️ Blob storage here
+    data = Column(LargeBinary, nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'))
     mime_type = Column(String, nullable=False)
     owner = relationship("User", back_populates="images")
