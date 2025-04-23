@@ -126,3 +126,4 @@ cython_debug/
 
 classification_models
 segmentation
+*.pth
