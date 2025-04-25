@@ -5,18 +5,20 @@ import {BASE_URL} from '../util/urls';
 import {Image} from '../models/image';
 import {ImageCount} from '../models/image-count';
 import {Prediction} from '../models/prediction';
+import {MyImage} from '../models/my-image';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
 
+
   constructor(private http: HttpClient) {
   }
 
 
-  getImages(): Observable<string[]> {
-    return this.http.get<string[]>(`${BASE_URL}/my-images`, {withCredentials: true});
+  getImages(): Observable<MyImage[]> {
+    return this.http.get<MyImage[]>(`${BASE_URL}/my-images`, {withCredentials: true});
   }
 
   getImage(id: string): Observable<string> {
@@ -47,10 +49,11 @@ export class ApiService {
     return this.http.get<ImageCount>(`${BASE_URL}/image_count/?${params.toString()}`, {withCredentials: true});
   }
 
-  getImagePrediction(image: Image, model_name: string): Observable<Prediction> {
+  getImagePrediction(image: Image, model_name?: string ): Observable<Prediction> {
     let params = new URLSearchParams();
     params.append('image_path', image.filename);
-    params.append('model_name', model_name);
+    if (model_name)
+      params.append('model_name', model_name);
     return this.http.post<Prediction>(`${BASE_URL}/predict_stored/?${params.toString()}`, {withCredentials: true});
   }
 
@@ -64,4 +67,17 @@ export class ApiService {
     return `${BASE_URL}/masked_segment/?${params.toString()}`;
   }
 
+  // http://localhost:8000/models/
+  getModelNames(): Observable<string[]> {
+    return this.http.get<string[]>(`${BASE_URL}/models/`, {withCredentials: true});
+  }
+
+  uploadImages(uploadedFiles: File[]):Observable<any> {
+    for (let file of uploadedFiles) {
+      const formData = new FormData();
+      formData.append('files', file, file.name);
+      this.http.post<any>(`${BASE_URL}/upload_image/`, formData, {withCredentials: true});
+    }
+    return new Observable()
+  }
 }

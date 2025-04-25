@@ -1,18 +1,16 @@
-import {Component, OnInit, WritableSignal} from '@angular/core';
+import {Component, OnInit} from '@angular/core';
 import {ButtonModule} from 'primeng/button';
 import {PaginatorModule, PaginatorState} from 'primeng/paginator';
 import {AuthService} from '../../service/auth.service';
 import {ApiService} from '../../service/api.service';
-import {JsonPipe, NgForOf} from '@angular/common';
+import {JsonPipe} from '@angular/common';
 import {Image} from '../../models/image';
-import {Image as PrimeImage} from 'primeng/image';
 import {BASE_URL} from '../../util/urls';
 import {ImageCount} from '../../models/image-count';
-import { DropdownModule } from 'primeng/dropdown';
+import {DropdownModule} from 'primeng/dropdown';
 import {FormsModule} from '@angular/forms';
 import {Prediction} from '../../models/prediction';
-import {Dialog, DialogModule} from 'primeng/dialog';
-
+import {Dialog} from 'primeng/dialog';
 
 
 @Component({
@@ -26,12 +24,11 @@ export class HomeComponent implements OnInit {
   rows = 10;
   isAuthenticated: Function;
   images: Image[] = [];
-  imageCount : ImageCount = {
+  imageCount: ImageCount = {
     count: 0,
     type: '',
     category: ''
   };
-
 
 
   categories = [{label: 'Covid', value: 'COVID'},
@@ -48,8 +45,9 @@ export class HomeComponent implements OnInit {
     confidence_scores: {},
     image_path: ''
   }
-  mask_url : string = '';
-
+  mask_url: string = '';
+  model_names: string[] | undefined;
+  selectedModel: string | undefined;
 
 
   constructor(private authService: AuthService, private apiService: ApiService) {
@@ -60,7 +58,7 @@ export class HomeComponent implements OnInit {
   ngOnInit() {
     this.getImageCount();
     this.getPublicImages()
-
+    this.getModelNames();
   }
 
   onPageChange($event: PaginatorState) {
@@ -74,21 +72,21 @@ export class HomeComponent implements OnInit {
   }
 
   getPublicImages() {
-    let category :string|undefined;
+    let category: string | undefined;
     let type = 'images';
-    if(this.selectedCategory.value !== '')
+    if (this.selectedCategory.value !== '')
       category = this.selectedCategory.value;
-    this.apiService.getImagesWithPagination(this.first, this.rows,type,category).subscribe(images => {
+    this.apiService.getImagesWithPagination(this.first, this.rows, type, category).subscribe(images => {
       this.images = images;
     })
   }
 
   private getImageCount() {
-    let category :string|undefined;
+    let category: string | undefined;
 
-    if(this.selectedCategory.value !== '')
+    if (this.selectedCategory.value !== '')
       category = this.selectedCategory.value;
-    this.apiService.getImageCount(undefined,category).subscribe(imageCount => {
+    this.apiService.getImageCount(undefined, category).subscribe(imageCount => {
       this.imageCount = imageCount;
     })
   }
@@ -108,12 +106,23 @@ export class HomeComponent implements OnInit {
 
   predict(image: Image) {
 
-    this.mask_url = this.apiService.getPredictedMaskUrl(image,'overlay');
-    this.apiService.getImagePrediction(image, 'resnet50').subscribe((response: Prediction) => {
+    this.mask_url = this.apiService.getPredictedMaskUrl(image, 'overlay');
+    this.apiService.getImagePrediction(image, this.selectedModel ).subscribe((response: Prediction) => {
       console.log(response);
       this.json = response;
       // alert(`Prediction: ${response.prediction}`);
       this.visible = true;
+    });
+  }
+
+  onModelChange() {
+
+  }
+
+  private getModelNames() {
+    this.apiService.getModelNames().subscribe(model_names => {
+      console.log(model_names);
+      this.model_names = model_names;
     });
   }
 }

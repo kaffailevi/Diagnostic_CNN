@@ -1,0 +1,26 @@
+.flex-grid {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: center; /* optional: center the grid */
+}
+
+.grid-img {
+  width: 20%;         /* 5 per row */
+  //aspect-ratio: 1/1;  /* keeps images square if supported */
+  object-fit: cover;  /* ensures images fill the box */
+  box-sizing: border-box;
+  padding: 4px;       /* optional: spacing between images */
+}
+
+.json {
+  white-space: pre-wrap;
+  background-color: #f4f4f4;
+  border: 1px solid #ccc;
+  padding: 1rem;
+  font-family: monospace;
+  border-radius: 8px;
+  max-width: 600px;
+  margin: 1rem auto;
+  overflow-x: auto;
+}

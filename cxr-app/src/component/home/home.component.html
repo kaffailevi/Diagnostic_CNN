@@ -20,13 +20,20 @@
     placeholder="Select a category"
     (onChange)="onCategoryChange()"
   />
+  <p-dropdown
+    [options]="model_names"
+    [(ngModel)]="selectedModel"
+    placeholder="Select a model"
+    (onChange)="onModelChange()"
+  />
+  Default model is GoogleNet
 </div>
 
 <div class="flex-grid">
   @for($img of images;track $img.url)
   {
     <div class="grid-img" style="display: flex; flex-direction: column; align-items: center;">
-      <img [src]="`${BASE_URL}${$img.url}`" class=""/>
+      <img [src]="`${BASE_URL}${$img.url}`" style="width: 100%;"/>
       <p-button label="Predict" (onClick)="predict($img)" />
     </div>
   }
