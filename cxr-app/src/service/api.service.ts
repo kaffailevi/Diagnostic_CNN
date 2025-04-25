@@ -80,4 +80,8 @@ export class ApiService {
     }
     return new Observable()
   }
+
+  deleteImage($img: MyImage): Observable<any> {
+    return this.http.delete<any>(`${BASE_URL}/myimages/${$img.id}`, {withCredentials: true});
+  }
 }

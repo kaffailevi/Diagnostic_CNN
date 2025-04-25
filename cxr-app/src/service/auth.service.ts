@@ -15,13 +15,21 @@ export class AuthService {
     window.location.href = `${BASE_URL}/login`;
   }
 
-  isAuthenticated(): Promise<boolean> {
-  //     check by requesting the /my-images protected endpoint
-  //     if the request is successful, the user is authenticated
-    return this.http.get(`${BASE_URL}/my-images`, {withCredentials: true}).toPromise()
-      .then(() => true)
-      .catch(() => false);
+  async isAuthenticated(): Promise<boolean> {
+    //     check by requesting the /my-images protected endpoint
+    //     if the request is successful, the user is authenticated
+    try {
+      await this.http.get(`${BASE_URL}/my-images`, {withCredentials: true}).toPromise();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
 
+  logout() {
+    this.http.get(`${BASE_URL}/logout`, {withCredentials: true}).subscribe(() => {
+      window.location.reload();
+    });
+  }
 }

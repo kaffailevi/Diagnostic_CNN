@@ -1,12 +1,10 @@
 import {Component, OnInit} from '@angular/core';
 import {Button} from 'primeng/button';
 import {BASE_URL} from '../../util/urls';
-import {Image} from '../../models/image';
 import {ApiService} from '../../service/api.service';
 import {MyImage} from '../../models/my-image';
-import {FileSelectEvent, FileUpload, FileUploadEvent} from 'primeng/fileupload';
+import {FileSelectEvent, FileUpload} from 'primeng/fileupload';
 import {Badge} from 'primeng/badge';
-import {ProgressBar} from 'primeng/progressbar';
 import {DecimalPipe, NgForOf, NgIf} from '@angular/common';
 
 @Component({
@@ -26,10 +24,11 @@ export class ProfileComponent implements OnInit {
 
 
   protected readonly BASE_URL = BASE_URL;
-  images: MyImage[] =[];
+  images: MyImage[] = [];
   totalSizePercent: any;
   totalSize: number = 0;
   uploadedFiles: File[] = [];
+
   constructor(private apiService: ApiService) {
   }
 
@@ -72,6 +71,7 @@ export class ProfileComponent implements OnInit {
     }
     this.totalSizePercent = (this.totalSize / 1000000) * 100;
   }
+
   choose($event: MouseEvent, chooseCallback: any) {
     $event.preventDefault();
     chooseCallback();
@@ -85,5 +85,13 @@ export class ProfileComponent implements OnInit {
     //   console.log(response);
     //   window.location.reload();
     // });
+  }
+
+  delete($img: MyImage) {
+    this.apiService.deleteImage($img).subscribe((response: any) => {
+      console.log(response);
+      this.getMyImages();
+      this.getMyImages();
+    });
   }
 }

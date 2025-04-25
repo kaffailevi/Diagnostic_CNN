@@ -1,9 +1,11 @@
-<p>profile works!</p>
 <div class="flex-grid">
   @for ($img of images; track $img.id) {
-    <div class="grid-img" style="display: flex; flex-direction: column; align-items: center;">
+    <div class="grid-img card" style="display: flex; flex-direction: column; align-items: center;margin: 0.5rem;">
       <img [src]="`${BASE_URL}/myimages/${$img.id}`" style="width: 100%;"/>
-      <p-button label="Predict" (onClick)="predict($img)"/>
+      <div style="display: flex; flex-direction: row; justify-content: space-between; width: 100%;">
+        <p-button label="Predict" severity="primary" (onClick)="predict($img)"/>
+        <p-button label="Delete" severity="danger" (onClick)="delete($img)"/>
+      </div>
     </div>
   }
 </div>
