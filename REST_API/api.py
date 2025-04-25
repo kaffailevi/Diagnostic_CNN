@@ -22,6 +22,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from cnn_models import resnet50_model, inception_resnet_model, googlenet_model
 from urllib.parse import urlparse
+from fastapi.responses import JSONResponse
 
 
 cnn_models = {
@@ -102,7 +103,7 @@ async def get_models():
 frontend_origin = os.getenv("FRONTEND_URL").rstrip('/')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_origin],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -392,60 +393,39 @@ def create_masked_image(original_image_path, segmentation_mask, mode="overlay"):
     return result_image
 
 
-@app.post("/masked_segment/")
-async def masked_segment(file: UploadFile = File(...), mode: str = "extract"):
+@app.get("/masked_segment/")
+async def masked_segment(
+    filename: str = Query(..., description="Relative path to image in test_data folder"),
+    mode: str = Query("extract", description="Mode for masking: 'extract' or 'overlay'")
+):
     """
-    Processes an uploaded image file, performs segmentation using a pre-trained model, 
+    Processes a stored image file, performs segmentation using a pre-trained model, 
     and returns a masked image based on the specified mode.
-    Processes an uploaded image file, performs segmentation using a pre-trained model, 
-    and returns a masked image based on the specified mode.
+    
     Args:
-        file (UploadFile): The uploaded image file to be processed.
+        filename (str): Relative path to image in the test_data folder.
         mode (str, optional): The mode for creating the masked image. Defaults to "extract".
-        file (UploadFile): The uploaded image file to be processed.
-        mode (str, optional): The mode for creating the masked image. Defaults to "extract".
+        
     Returns:
         FileResponse: A response containing the masked image file in PNG format.
-        dict: An error message if an exception occurs.
+        
     Raises:
-        Exception: If any error occurs during the processing of the image.
-    Workflow:
-        1. Reads the uploaded image file and saves it temporarily.
-        2. Opens the image to retrieve its original size.
-        3. Preprocesses the image for input into the segmentation model.
-        4. Performs inference using a pre-trained UNet model.
-        5. Postprocesses the model's output to resize it back to the original image size.
-        6. Creates a masked image based on the segmentation output and the specified mode.
-        7. Saves the masked image to a file and returns it as a response.
-        8. Handles any exceptions that occur during the process and returns an error message.
-        FileResponse: A response containing the masked image file in PNG format.
-        dict: An error message if an exception occurs.
-    Raises:
-        Exception: If any error occurs during the processing of the image.
-    Workflow:
-        1. Reads the uploaded image file and saves it temporarily.
-        2. Opens the image to retrieve its original size.
-        3. Preprocesses the image for input into the segmentation model.
-        4. Performs inference using a pre-trained UNet model.
-        5. Postprocesses the model's output to resize it back to the original image size.
-        6. Creates a masked image based on the segmentation output and the specified mode.
-        7. Saves the masked image to a file and returns it as a response.
-        8. Handles any exceptions that occur during the process and returns an error message.
+        HTTPException: If the file is not found or an error occurs during processing.
     """
-    
-    
     try:
-        # Read uploaded file
-        image_data = await file.read()
-        with open("temp_image.png", "wb") as f:
-            f.write(image_data)
+        # Construct the path to the image file
+        image_path = os.path.join("test_data", filename)
+        
+        # Verify the file exists
+        if not os.path.isfile(image_path):
+            raise HTTPException(status_code=404, detail="Image file not found")
 
         # Open the original image to get its size
-        original_image = Image.open("temp_image.png")
+        original_image = Image.open(image_path)
         original_size = original_image.size
 
         # Preprocess the image
-        input_tensor = preprocess_image("temp_image.png")
+        input_tensor = preprocess_image(image_path)
 
         # Perform inference
         with torch.no_grad():
@@ -455,23 +435,81 @@ async def masked_segment(file: UploadFile = File(...), mode: str = "extract"):
         segmented_image = postprocess_output(output_tensor, original_size)
 
         # Create masked image based on the specified mode
-        masked_image = create_masked_image("temp_image.png", segmented_image, mode=mode)
+        masked_image = create_masked_image(image_path, segmented_image, mode=mode)
         
         # Save the masked image to a file
         masked_image_path = "masked_image.png"
         masked_image.save(masked_image_path)
 
         # Return the masked image as a response
-        response = FileResponse(masked_image_path, media_type="image/png", filename="masked_image.png")
-        # Clean up temporary files if needed
-        # os.remove("temp_image.png")
-        # os.remove(masked_image_path)
-        # Optionally, you can remove the segmented image as well
-        # os.remove("segmented_image.png")
-        return response
+        return FileResponse(masked_image_path, media_type="image/png", filename="masked_image.png")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+@app.post("/masked_segment_upload/")
+async def masked_segment_upload(
+    file: UploadFile = File(...), 
+    mode: str = Form("extract"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Protected endpoint that processes an uploaded image file, performs segmentation 
+    using a pre-trained model, and returns a masked image based on the specified mode.
+    
+    Args:
+        file (UploadFile): The uploaded image file to be processed.
+        mode (str, optional): The mode for creating the masked image. Defaults to "extract".
+        current_user (dict): The authenticated user information.
+        
+    Returns:
+        FileResponse: A response containing the masked image file in PNG format.
+        
+    Raises:
+        HTTPException: If an error occurs during the processing of the image.
+    """
+    try:
+        # Read uploaded file
+        image_data = await file.read()
+        temp_path = f"temp_image_{current_user['user_id']}.png"
+        with open(temp_path, "wb") as f:
+            f.write(image_data)
+
+        # Open the original image to get its size
+        original_image = Image.open(temp_path)
+        original_size = original_image.size
+
+        # Preprocess the image
+        input_tensor = preprocess_image(temp_path)
+
+        # Perform inference
+        with torch.no_grad():
+            output_tensor = unet_model(input_tensor)
+
+        # Postprocess the output (resize back to original size)
+        segmented_image = postprocess_output(output_tensor, original_size)
+
+        # Create masked image based on the specified mode
+        masked_image = create_masked_image(temp_path, segmented_image, mode=mode)
+        
+        # Save the masked image to a file
+        masked_image_path = f"masked_image_{current_user['user_id']}.png"
+        masked_image.save(masked_image_path)
+
+        # Clean up temporary files
+        os.remove(temp_path)
+
+        # Return the masked image as a response
+        return FileResponse(
+            masked_image_path, 
+            media_type="image/png", 
+            filename=f"masked_{file.filename}"
+        )
     
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 
 
@@ -901,3 +939,58 @@ async def delete_image(
     db.delete(image)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.get("/image_count/")
+async def get_image_count(
+    category: Optional[str] = Query(None, description="Filter by category (e.g., COVID, Normal)"),
+    type: Optional[str] = Query("images", description="Type of items to count ('images' or 'masks')")
+):
+    """
+    Returns the count of images or masks in the static directory.
+    
+    Args:
+        category: Optional filter by category (e.g., COVID, Normal)
+        type: Type of items to count (default is 'images', can be 'masks')
+        
+    Returns:
+        dict: A dictionary with the count of images/masks
+    """
+    try:
+        # Use the existing function to get all matching images
+        images = get_images_from_directory(BASE_DIR, category, type=type)
+        
+        # Return the count
+        return {
+            "count": len(images),
+            "type": type,
+            "category": category if category else "all"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error counting images: {str(e)}")
+
+
+
+@app.get("/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    """
+    Logs out the current user by deleting the authentication token cookie.
+    
+    Args:
+        current_user: The authenticated user information from the JWT token
+        
+    Returns:
+        A response with a deleted token cookie and success message
+    """
+    # Create response with success message using JSONResponse
+    response = JSONResponse(content={"message": "Logout successful"})
+    
+    # Delete the token cookie
+    response.delete_cookie(
+        key="token",
+        httponly=True,
+        secure=False,  # OK in dev
+        samesite="lax"
+    )
+    
+    return response
