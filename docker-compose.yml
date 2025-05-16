@@ -1,8 +1,22 @@
 version: '3.8'
 
 services:
-  web:
+  # ---------- Angular Frontend ----------
+  frontend:
+    build:
+      context: ./cxr-app
+      dockerfile: Dockerfile
+    image: my-angular-app:latest
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+
+
+  # ---------- REST API Backend ----------
+  api:
     build: ./REST_API
+    image: my-rest-api:latest
     ports:
       - "8000:8000"
     depends_on:
@@ -11,6 +25,8 @@ services:
       - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydatabase
       # Add any other env vars your app needs
 
+
+  # ---------- PostgreSQL Database ----------
   db:
     image: postgres:13
     platform: linux/amd64
@@ -23,5 +39,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+
 volumes:
   postgres_data:
+

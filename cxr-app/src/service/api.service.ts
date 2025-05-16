@@ -1,6 +1,6 @@
 import {HttpClient} from '@angular/common/http';
 import {Injectable} from '@angular/core';
-import {Observable} from 'rxjs';
+import {Observable, tap} from 'rxjs';
 import {BASE_URL} from '../util/urls';
 import {Image} from '../models/image';
 import {ImageCount} from '../models/image-count';
@@ -17,7 +17,7 @@ export class ApiService {
   }
 
 
-  getImages(): Observable<MyImage[]> {
+  getMyImages(): Observable<MyImage[]> {
     return this.http.get<MyImage[]>(`${BASE_URL}/my-images`, {withCredentials: true});
   }
 
@@ -25,10 +25,7 @@ export class ApiService {
     return this.http.get<string>(`${BASE_URL}/my-images/${id}`, {withCredentials: true});
   }
 
-  // http://localhost:8000/images/?skip=0&limit=10&type=images&category=COVID example for url, category and type are optional
-  // skip is the number of images to skip, limit is the number of images to return
-  // type is the type of images to return, category is the category of images to return
-  // type can be 'images' or 'masks', category can be 'COVID' or 'Normal' , 'Viral Pneumonia' or 'Lung_Opacity'
+  // http://localhost:8000/images/?skip=0&limit=10&type=images&category=COVID
 
   getImagesWithPagination(skip: number, limit: number, type?: string, category?: string): Observable<Image[]> {
     let params = new URLSearchParams();
@@ -37,7 +34,12 @@ export class ApiService {
     if (type) params.append('type', type);
     if (category) params.append('category', category);
 
-    return this.http.get<Image[]>(`${BASE_URL}/images/?${params.toString()}`, {withCredentials: true});
+    return this.http.get<Image[]>(`${BASE_URL}/images/?${params.toString()}`, {withCredentials: true})
+      .pipe(tap(images => {    return images.map(img=> {
+        const splitted = img.filename.split('/');
+        img.label = `${splitted[0]}_${splitted[2]}`;
+        return img;
+      });}));
   }
 
   // http://localhost:8000/image_count/?category=normal&type=images
@@ -84,4 +86,22 @@ export class ApiService {
   deleteImage($img: MyImage): Observable<any> {
     return this.http.delete<any>(`${BASE_URL}/myimages/${$img.id}`, {withCredentials: true});
   }
+
+//   http://localhost:8000/masked_segment_db/12?mode=extract
+  getPredictedMaskUrlFromDb(image: MyImage, mode?: string): string {
+    let params = new URLSearchParams();
+    params.append('mode', mode ?? 'extract');
+    return `${BASE_URL}/masked_segment_db/${image.id}?${params.toString()}`;
+  }
+
+  // http://localhost:8000/predict-db/?image_id=12&model_name=google_net
+
+  getImagePredictionFromDb(image: MyImage, model_name?: string): Observable<Prediction> {
+    let params = new URLSearchParams();
+    params.append('image_id', image.id.toString());
+    if (model_name)
+      params.append('model_name', model_name);
+    return this.http.get<Prediction>(`${BASE_URL}/predict-db/?${params.toString()}`, {withCredentials: true});
+  }
+
 }

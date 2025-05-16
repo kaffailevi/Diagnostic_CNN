@@ -5,7 +5,12 @@ import {ApiService} from '../../service/api.service';
 import {MyImage} from '../../models/my-image';
 import {FileSelectEvent, FileUpload} from 'primeng/fileupload';
 import {Badge} from 'primeng/badge';
-import {DecimalPipe, NgForOf, NgIf} from '@angular/common';
+import {DecimalPipe, JsonPipe, NgForOf, NgIf} from '@angular/common';
+import {DropdownModule} from 'primeng/dropdown';
+import {FormsModule} from '@angular/forms';
+import {Dialog} from 'primeng/dialog';
+import {Prediction} from '../../models/prediction';
+import {AutoComplete, AutoCompleteCompleteEvent, AutoCompleteSelectEvent} from 'primeng/autocomplete';
 
 @Component({
   selector: 'app-profile',
@@ -15,7 +20,12 @@ import {DecimalPipe, NgForOf, NgIf} from '@angular/common';
     Badge,
     NgForOf,
     NgIf,
-    DecimalPipe
+    DecimalPipe,
+    DropdownModule,
+    FormsModule,
+    Dialog,
+    JsonPipe,
+    AutoComplete
   ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss'
@@ -28,22 +38,42 @@ export class ProfileComponent implements OnInit {
   totalSizePercent: any;
   totalSize: number = 0;
   uploadedFiles: File[] = [];
+  selectedModel: any = "";
+  model_names: string[] = [];
+  mask_url: string = "";
+  visible: boolean = false;
+  json: Prediction = {
+    prediction: '',
+    confidence_scores: {},
+    image_path: ''
+  };
+  selectedImage!: MyImage;
+  filteredImages: MyImage[] = [];
+  searchTerm: string = '';
 
   constructor(private apiService: ApiService) {
   }
 
   ngOnInit(): void {
     this.getMyImages();
+    this.getModelNames();
   }
 
 
   predict($img: MyImage) {
+    this.visible = true;
 
+    this.apiService.getImagePredictionFromDb($img, this.selectedModel).subscribe((response: any) => {
+      console.log(response);
+      this.json = response;
+      this.mask_url = `${BASE_URL}/masked_segment_db/${$img.id}/?mode=overlay`;
+    });
   }
 
   private getMyImages() {
-    this.apiService.getImages().subscribe((images: MyImage[]) => {
+    this.apiService.getMyImages().subscribe((images: MyImage[]) => {
       this.images = images;
+      this.filteredImages = images;
     });
   }
 
@@ -91,7 +121,60 @@ export class ProfileComponent implements OnInit {
     this.apiService.deleteImage($img).subscribe((response: any) => {
       console.log(response);
       this.getMyImages();
-      this.getMyImages();
     });
+  }
+
+  onModelChange() {
+
+  }
+
+  private getModelNames() {
+    this.apiService.getModelNames().subscribe(model_names => {
+      console.log(model_names);
+      this.model_names = model_names;
+    });
+  }
+
+  searchImages(event: AutoCompleteCompleteEvent) {
+    const q = (event.query || '').trim().toLowerCase();
+
+    if ( q.length === 0 || q === '') {
+      this.clearSearch();
+      this.filteredImages = [...this.images];
+      return;
+    }
+
+    this.filteredImages = this.images.filter(img =>
+      img.filename.toLowerCase().includes(q)
+    );
+  }
+
+
+  get displayedImages(): MyImage[] {
+    if (this.selectedImage) {
+      return [this.selectedImage];
+    }
+    return this.filteredImages;
+  }
+
+  onImageSelect(event: AutoCompleteSelectEvent) {
+    const image: MyImage = event.value;
+    this.selectedImage = image;
+    this.searchTerm = image.filename;
+  }
+
+
+  clearSearch() {
+    this.searchTerm = '';
+    this.selectedImage = undefined!;
+    this.filteredImages = [...this.images];
+  }
+
+
+  onKeyUp($event: KeyboardEvent) {
+    if(this.searchTerm === '' || $event.key === 'Escape') {
+      this.clearSearch();
+    }
+
   }
 }

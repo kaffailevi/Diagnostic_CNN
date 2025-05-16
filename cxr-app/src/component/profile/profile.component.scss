@@ -1,58 +1,191 @@
-.flex-grid {
+/* ---------- Header / Dropdown ---------- */
+.header-controls {
   display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
   flex-wrap: wrap;
+}
+
+.header-controls ::ng-deep .p-dropdown {
+  min-width: 12rem;
+}
+
+.header-controls .default-note {
+  font-size: 0.9rem;
+  color: #666;
+  margin-left: auto;
+}
+
+/* ---------- Image Grid ---------- */
+.flex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.grid-img.card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.grid-img.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.grid-img.card img {
   width: 100%;
-  justify-content: center; /* optional: center the grid */
-  height: 600px;
-  overflow: auto;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
 }
 
-.grid-img {
-  width: 20%;         /* 5 per row */
-  aspect-ratio: 1/1;  /* keeps images square if supported */
-  //object-fit: cover;  /* ensures images fill the box */
-  box-sizing: border-box;
-  padding: 4px;       /* optional: spacing between images */
-  height: fit-content;
+.grid-img.card .p-button {
+  flex: 1;
+  margin: 0 0.25rem;
 }
 
-.json {
-  white-space: pre-wrap;
-  background-color: #f4f4f4;
-  border: 1px solid #ccc;
+/* Row of Predict / Delete buttons */
+.grid-img.card > div {
+  display: flex;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* ---------- Paginator ---------- */
+.p-paginator {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------- FileUpload Wrapper ---------- */
+.p-fileupload {
+  margin-bottom: 2rem;
+  --surface-border: #ddd; /* if your theme supports CSS vars */
+}
+
+/* Header toolbar */
+.p-fileupload .p-fileupload-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.p-fileupload .p-button {
+  margin-right: 0.5rem;
+}
+
+/* Pending & Completed lists */
+.p-fileupload .p-fileupload-content {
   padding: 1rem;
-  font-family: monospace;
-  border-radius: 8px;
-  max-width: 600px;
-  margin: 1rem auto;
+}
+
+.p-fileupload-content h5 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: #444;
+}
+
+.p-fileupload-content .card,
+.p-fileupload-content .p-8 {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 140px;
+  gap: 0.5rem;
+}
+
+.p-fileupload-content img {
+  border-radius: 0.25rem;
+}
+
+.p-fileupload-content span {
+  font-weight: 600;
+  text-overflow: ellipsis;
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Badge alignment */
+.p-fileupload-content p-badge {
+  margin-top: 0.25rem;
+}
+
+/* ---------- Empty State ---------- */
+.p-fileupload .p-fileupload-emptymessage {
+  padding: 2rem;
+  border: 2px dashed #ccc;
+  border-radius: 0.5rem;
+  text-align: center;
+  color: #999;
+}
+
+.p-fileupload .p-fileupload-emptymessage .pi {
+  font-size: 3rem !important;
+  margin-bottom: 0.5rem;
+}
+
+/* ---------- Dialog: Prediction Report ---------- */
+.p-dialog .p-dialog-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.p-dialog .p-dialog-content img {
+  max-width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+}
+
+.p-dialog .json {
+  width: 100%;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+  padding: 0.75rem;
   overflow-x: auto;
 }
 
-
-.card {
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  max-width: 400px;
-  margin: 20px auto;
-  font-family: Arial, sans-serif;
-  height: 100%;
+.p-dialog .json pre {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #333;
 }
 
-.card h3 {
-  margin-top: 0;
-}
-
-.card button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.card button:hover {
-  background-color: #0056b3;
+/* ---------- Responsive ---------- */
+@media (max-width: 600px) {
+  .header-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-controls .default-note {
+    margin-left: 0;
+  }
+  .grid-img.card,
+  .p-fileupload-content .card,
+  .p-fileupload-content .p-8 {
+    width: 100%;
+    max-width: none;
+  }
 }

@@ -449,37 +449,58 @@ async def masked_segment(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
-@app.post("/masked_segment_upload/")
-async def masked_segment_upload(
-    file: UploadFile = File(...), 
-    mode: str = Form("extract"),
+@app.get("/masked_segment_db/{image_id}")
+async def masked_segment_db(
+    image_id: int,
+    mode: str = Query("extract", description="Mode for masking: 'extract' or 'overlay'"),
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Protected endpoint that processes an uploaded image file, performs segmentation 
+    Protected endpoint that processes an image from the database, performs segmentation 
     using a pre-trained model, and returns a masked image based on the specified mode.
     
     Args:
-        file (UploadFile): The uploaded image file to be processed.
+        image_id (int): The ID of the image in the database.
         mode (str, optional): The mode for creating the masked image. Defaults to "extract".
+        db (Session): Database session dependency.
         current_user (dict): The authenticated user information.
         
     Returns:
         FileResponse: A response containing the masked image file in PNG format.
         
     Raises:
-        HTTPException: If an error occurs during the processing of the image.
+        HTTPException: If the image is not found or an error occurs during processing.
     """
+    temp_path = None
     try:
-        # Read uploaded file
-        image_data = await file.read()
-        temp_path = f"temp_image_{current_user['user_id']}.png"
+        # Get the user from the database
+        user = db.query(models.User).filter(models.User.email == current_user["user_email"]).first()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get the image from the database with ownership check
+        image = db.query(models.Image).filter(
+            models.Image.id == image_id,
+            models.Image.user_id == user.id
+        ).first()
+        
+        if not image:
+            raise HTTPException(
+                status_code=404,
+                detail="Image not found or you don't have permission to access it"
+            )
+
+        # Create a temporary file from the image data
+        temp_path = f"temp_image_{current_user['user_id']}_{image_id}.png"
         with open(temp_path, "wb") as f:
-            f.write(image_data)
+            f.write(image.data)
 
         # Open the original image to get its size
         original_image = Image.open(temp_path)
         original_size = original_image.size
+        original_image.close()  # Close the image after getting its size
 
         # Preprocess the image
         input_tensor = preprocess_image(temp_path)
@@ -495,7 +516,7 @@ async def masked_segment_upload(
         masked_image = create_masked_image(temp_path, segmented_image, mode=mode)
         
         # Save the masked image to a file
-        masked_image_path = f"masked_image_{current_user['user_id']}.png"
+        masked_image_path = f"masked_image_{current_user['user_id']}_{image_id}.png"
         masked_image.save(masked_image_path)
 
         # Clean up temporary files
@@ -505,10 +526,13 @@ async def masked_segment_upload(
         return FileResponse(
             masked_image_path, 
             media_type="image/png", 
-            filename=f"masked_{file.filename}"
+            filename=f"masked_{image.filename}"
         )
     
     except Exception as e:
+        # Clean up temporary files if they exist
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 
@@ -830,7 +854,7 @@ async def get_user_images(
     
     return images
 
-@app.post("/predict-db/")
+@app.get("/predict-db/")
 async def predict_database_image(
     image_id: int = Query(..., description="ID of image in database"),
     model_name: str = Query("google_net"),
@@ -994,3 +1018,4 @@ async def logout(current_user: dict = Depends(get_current_user)):
     )
     
     return response
+

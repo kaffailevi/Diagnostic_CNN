@@ -1,17 +1,5 @@
-
-<div id="g_id_onload"
-     data-client_id="YOUR_GOOGLE_CLIENT_ID"
-     data-login_uri="https://your.domain/your_login_endpoint"
-     data-auto_prompt="false">
-</div>
-
-
-
-<!--<div class="card flex justify-center">-->
-<!--  <p-button label="Check" />-->
-<!--</div>-->
-<div>
-  <p-dropdown
+<div class="header-controls">
+<p-dropdown
     [options]="categories"
     [(ngModel)]="selectedCategory"
     optionLabel="label"
@@ -24,7 +12,7 @@
     placeholder="Select a model"
     (onChange)="onModelChange()"
   />
-  Default model is GoogleNet
+  <span class="default-note">Default model is GoogleNet</span>
 </div>
 
 <div class="flex-grid">
@@ -32,6 +20,8 @@
   {
     <div class="grid-img card" style="display: flex; flex-direction: column; align-items: center;margin: 0.5rem;">
       <img [src]="`${BASE_URL}${$img.url}`" style="width: 100%;"/>
+      <div>{{$img.label}}</div>
+
       <p-button label="Predict" (onClick)="predict($img)" />
     </div>
   }
