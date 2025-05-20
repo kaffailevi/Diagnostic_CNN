@@ -3,7 +3,7 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies (include npm ci for clean install)
+# Install dependencies 
 COPY package*.json .
 RUN npm ci
 
