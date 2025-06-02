@@ -4,7 +4,8 @@ from models import Base # assumes your SQLAlchemy models are in models.py
 import os
 
 # Replace with your actual PostgreSQL connection string
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://myuser:mypassword@localhost:5432/mydatabase")
+DATABASE_URL = os.getenv("DATABASE_URL",
+                        "postgresql://myuser:mypassword@localhost:5432/mydatabase")
 # Create the engine
 engine = create_engine(DATABASE_URL)
 
@@ -14,3 +15,4 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # This function creates the tables in your DB based on your models
 def init_db():
     Base.metadata.create_all(bind=engine)
+

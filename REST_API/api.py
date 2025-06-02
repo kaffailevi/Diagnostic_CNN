@@ -35,11 +35,13 @@ for model_name, model in cnn_models.items():
     # Set the model to evaluation mode
     model.eval()
     # Load the model weights
-    state_dict = torch.load(f"classification_models/{model_name}.pth", map_location=torch.device('cpu'))
+    state_dict = torch.load(f"classification_models/{model_name}.pth",
+                            map_location=torch.device('cpu'))
     # Load the state dict into the model
     model.load_state_dict(state_dict)
 
-unet_model = torch.load("segmentation/unet_model_full.pth", weights_only=False, map_location=torch.device('cpu'))
+unet_model = torch.load("segmentation/unet_model_full.pth",
+                        weights_only=False, map_location=torch.device('cpu'))
 unet_model.eval()
 
 
