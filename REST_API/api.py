@@ -192,9 +192,8 @@ async def auth(request: Request,
         value=jwt_token,
         httponly=True,
         secure=False,          # OK in dev
-        samesite="lax",        # ← not “none”
-        max_age=3600,
-        # remove domain
+        samesite="lax",        
+        max_age=3600
         )
         return response
 
