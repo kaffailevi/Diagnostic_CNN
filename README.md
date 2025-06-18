@@ -89,6 +89,7 @@ A projekt a **COVID-19 Radiography Database** adathalmazt használja, amely tart
 **Webalkalmazás**:
 - FastApi
 - Angular - PrimeNG
+- PostgreSQL adatbázis
 - Nginx
 
 **Gépi Tanulás**:
