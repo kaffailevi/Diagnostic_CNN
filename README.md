@@ -19,10 +19,9 @@ Ez a projekt konvolúciós neurális hálózatok (CNN) alkalmazásával foglalko
 Diagnostic_CNN/
 ├── COVID-19_Radiography_Dataset/     # COVID-19 röntgen adatbázis
 ├── REST_API/                         # Flask REST API szolgáltatás
-├── ResNet_CNN_no_crop/              # ResNet implementáció vágás nélkül
 ├── cxr-app/                         # Webalkalmazás frontend és backend
 ├── notebooks/
-│   ├── cxr-dataset-cropped-cnn.ipynb       # Vágott képekkel tanító CNN
+│   ├── cxr-dataset-cropped-cnn.ipynb       # Vágott képekkel tanított CNN
 │   ├── dataset-test-cnnonly-nocrop.ipynb   # CNN tesztelés vágás nélkül
 │   ├── dataset-test-unet.ipynb             # U-Net szegmentációs tesztek
 │   ├── googlenet-cnn.ipynb                 # GoogleNet architektúra
@@ -37,7 +36,7 @@ Diagnostic_CNN/
 
 ### 🤖 Használt CNN Architektúrák
 
-A projekt több state-of-the-art CNN architektúrát implementál és összehasonlít:
+A projekt több CNN architektúrát implementál és összehasonlít:
 
 1. **ResNet-50**
    - Reziduális kapcsolatok használata a gradient vanishing probléma elkerülésére
@@ -164,9 +163,10 @@ A projekt során elért eredmények:
 
 | Modell | Pontosság | Szenzitivitás | Specifikusság | F1-Score |
 |--------|-----------|---------------|---------------|----------|
-| ResNet-50 | 96.8% | 95.2% | 97.1% | 96.1% |
-| Inception-ResNet-v2 | 94.5% | 93.8% | 95.2% | 94.5% |
-| GoogleNet | 92.3% | 91.7% | 93.0% | 92.3% |
+| ResNet-50 |	90.5% |	89.5% |	95.1% |	90.1% |
+| Inception-ResNet-v2 |	93.1%	| 92.6% |	96.2% |	93.2% |
+| GoogleNet	| 92.4%	| 92.2%	| 95.8%	| 92.4% |
+
 
 ### 🔬 Főbb Funkciók
 
