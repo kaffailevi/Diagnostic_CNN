@@ -105,7 +105,7 @@ A projekt a **COVID-19 Radiography Database** adathalmazt használja, amely tart
 
 ```bash
 # Python 3.7+ telepítése
-# Docker telepítése (opcionális)
+# Docker telepítése 
 # Git telepítése
 ```
 
