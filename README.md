@@ -168,7 +168,6 @@ A projekt során elért eredmények:
 
 1. **Adatfeldolgozás**
    - Képek előfeldolgozása és normalizálása
-   - Adataugmentáció technikák alkalmazása
    - Kiegyensúlyozott adathalmazok létrehozása
 
 2. **Modell Tanítás**
