@@ -77,9 +77,7 @@ A projekt a **COVID-19 Radiography Database** adathalmazt használja, amely tart
 **Programozási Nyelv**: Python 3.7+
 
 **Deep Learning Keretrendszerek**:
-- TensorFlow 2.x
-- Keras
-- PyTorch (opcionális)
+- PyTorch 
 
 **Adatfeldolgozás**:
 - NumPy
@@ -90,13 +88,12 @@ A projekt a **COVID-19 Radiography Database** adathalmazt használja, amely tart
 
 **Webalkalmazás**:
 - Flask
-- HTML/CSS/JavaScript
-- Bootstrap
+- Angular - PrimeNG
+- Nginx
 
 **Gépi Tanulás**:
 - Scikit-learn
 - Matplotlib
-- Seaborn
 
 **Deployment**:
 - Docker
