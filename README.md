@@ -87,7 +87,7 @@ A projekt a **COVID-19 Radiography Database** adathalmazt használja, amely tart
 - PIL/Pillow
 
 **Webalkalmazás**:
-- Flask
+- FastApi
 - Angular - PrimeNG
 - Nginx
 
