@@ -17,21 +17,20 @@ Ez a projekt konvolúciós neurális hálózatok (CNN) alkalmazásával foglalko
 
 ```
 Diagnostic_CNN/
-├── COVID-19_Radiography_Dataset/     # COVID-19 röntgen adatbázis
+├── COVID-19_Radiography_Dataset/     # COVID-19 röntgen adatbázis (letölteni a Kagglerol)
 ├── REST_API/                         # Flask REST API szolgáltatás
-├── cxr-app/                         # Webalkalmazás frontend és backend
-├── notebooks/
-│   ├── cxr-dataset-cropped-cnn.ipynb       # Vágott képekkel tanított CNN
-│   ├── dataset-test-cnnonly-nocrop.ipynb   # CNN tesztelés vágás nélkül
-│   ├── dataset-test-unet.ipynb             # U-Net szegmentációs tesztek
-│   ├── googlenet-cnn.ipynb                 # GoogleNet architektúra
-│   ├── inception-resnet-v2.ipynb           # Inception-ResNet-v2 modell
-│   ├── resnet-50-cnn.ipynb                 # ResNet-50 implementáció
-│   ├── roc-auc-trained-models.ipynb        # ROC-AUC értékelés
-│   └── training-of-models.ipynb            # Modellek tanítása
+├── cxr-app/                         # Webalkalmazás frontend
 ├── docker-compose.yml               # Docker kompozíció
 ├── .gitignore                       # Git figyelmen kívül hagyott fájlok
-└── README.md                        # Projekt dokumentáció
+├── cxr-dataset-cropped-cnn.ipynb       # Vágott képekkel tanított CNN
+├── dataset-test-cnnonly-nocrop.ipynb   # CNN tesztelés vágás nélkül
+├── dataset-test-unet.ipynb             # U-Net szegmentációs tesztek
+├── googlenet-cnn.ipynb                 # GoogleNet architektúra
+├── inception-resnet-v2.ipynb           # Inception-ResNet-v2 modell
+├── resnet-50-cnn.ipynb                 # ResNet-50 implementáció
+├── roc-auc-trained-models.ipynb        # ROC-AUC értékelés
+├── training-of-models.ipynb            # Modellek tanítása
+└── README.md                        # Projekt leírás
 ```
 
 ### 🤖 Használt CNN Architektúrák
